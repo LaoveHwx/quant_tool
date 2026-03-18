@@ -1,0 +1,7 @@
+{
+  "model_path": "models/mobilenet.onnx",
+  "calibration_dataset": "data/calib/",
+  "output_path": "output/quantized_model.int8",
+  "bit_width": 8,
+  "platform": "ascend"
+}
