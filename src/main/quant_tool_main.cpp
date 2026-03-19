@@ -1,5 +1,6 @@
 #include <iostream>
 #include "edgequant/version.h"     // 自动生成的版本头文件
+#include "edgequant/quantizer.h"
 
 int main() {
     std::cout << "EdgeQuant Toolkit v" << TOOLKIT_VERSION << std::endl;
