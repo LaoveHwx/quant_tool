@@ -45,13 +45,22 @@ add_library(edgequant_quantizer SHARED
     src/quantizer/tensor_utils.cpp
     src/quantizer/ascend_adapter.cpp
 )
+
 target_include_directories(edgequant_quantizer
     PUBLIC ${CMAKE_SOURCE_DIR}/include
 )
+
 target_link_libraries(edgequant_quantizer
     PRIVATE ascendcl pthread dl   # mock 时也能链接
 )
 
+target_precompile_headers(edgequant_quantizer 
+    PRIVATE ${CMAKE_SOURCE_DIR}/include/edgequant/pch.h
+)
+
+target_compile_options(edgequant_quantizer 
+    PRIVATE -Werror
+)
 # ===================== 主程序 =====================
 add_executable(edgequant_tool
     src/main/quant_tool_main.cpp
