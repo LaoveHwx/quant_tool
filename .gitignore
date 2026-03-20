@@ -4,3 +4,4 @@ output/
 *.so
 *.a
 *.log
+output/data/*

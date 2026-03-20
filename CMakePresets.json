@@ -5,16 +5,24 @@
       "name": "ninja-debug",
       "displayName": "Ninja Debug",
       "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/ninja-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "${sourceDir}/output/bin",
+        "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "${sourceDir}/output/lib",
+        "CMAKE_ARCHIVE_OUTPUT_DIRECTORY": "${sourceDir}/output/lib"
       }
     },
     {
       "name": "ninja-release",
       "displayName": "Ninja Release",
       "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/ninja-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_RUNTIME_OUTPUT_DIRECTORY": "${sourceDir}/output/bin",
+        "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "${sourceDir}/output/lib",
+        "CMAKE_ARCHIVE_OUTPUT_DIRECTORY": "${sourceDir}/output/lib"
       }
     }
   ]

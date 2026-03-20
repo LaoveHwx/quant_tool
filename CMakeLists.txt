@@ -75,9 +75,11 @@ add_executable(edgequant_tool
 
 target_link_libraries(edgequant_tool
     PRIVATE edgequant_quantizer
-    PRIVATE CLI11::CLI11
+    PRIVATE CLI11::CLI11 
 )
-
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
+    target_link_libraries(edgequant_tool PRIVATE stdc++fs)
+endif()
 # 确保运行时能找到 .so
 set_target_properties(edgequant_tool PROPERTIES
     BUILD_RPATH ${OUTPUT_DIR}/lib
