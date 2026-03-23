@@ -21,7 +21,7 @@ WORKDIR /workspace
 COPY . .
 
 # 4. 执行 Release 模式编译 (给客户的版本不需要 debug 信息)
-RUN ./build.sh release
+RUN bash build.sh release
 
 
 # ==========================================
@@ -36,11 +36,13 @@ RUN apt update && apt install -y \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. 核心魔法：从第一阶段 (builder) 把编译好的二进制文件“偷”过来！
-WORKDIR /app
-COPY --from=builder /workspace/output/bin/edgequant_tool /app/edgequant_tool
-
+# 2. 核心
+# 从编译阶段拷贝 bin 和 lib
+COPY --from=builder /workspace/output/bin/ /app/bin/
+COPY --from=builder /workspace/output/lib/ /app/lib/
+# 【关键】告诉系统动态库的位置
+ENV LD_LIBRARY_PATH="/app/lib"
 # 3. 设置默认执行命令
-ENTRYPOINT ["/app/edgequant_tool"]
+ENTRYPOINT ["/app/bin/edgequant_tool"]
 # 默认参数，允许用户在 docker run 时覆盖
 CMD ["--size", "10"]
