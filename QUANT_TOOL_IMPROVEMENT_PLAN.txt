@@ -1,0 +1,490 @@
+EdgeAIquant_toolkit 改进计划与 Codex 执行指导
+=============================================
+
+用途
+----
+
+本文档是给 `EdgeAIquant_toolkit` 仓库使用的工程改造计划。可以把本文件复制到：
+
+  /home/lar/workspace/EdgeAIquant_toolkit/QUANT_TOOL_IMPROVEMENT_PLAN.txt
+
+然后在该仓库的新对话框中，让 Codex 读取本文件并执行。
+
+当前优先目标不是“大而全”的 ONNX 量化器，而是让工具先具备清晰、可验证、不会误报成功的工程接口，为 LiteEdgeINT 后续 C++ Runtime 和 gem5 链路做准备。
+
+给 Codex 的总原则
+----------------
+
+如果在 `EdgeAIquant_toolkit` 仓库的新对话框中执行本计划，先做以下动作：
+
+1. 确认当前目录是 `/home/lar/workspace/EdgeAIquant_toolkit`。
+2. 先读本文件，再读 `build.sh`、`include/edgequant/args_parser.h`、`src/main/args_parser.cpp`、`src/main/quant_tool_main.cpp`。
+3. 执行 `git status --short`，不要覆盖用户已有改动。
+4. 只修改完成 M1 所需的最小文件。
+5. 修改后必须运行构建和验收命令。
+6. 最后总结：改了哪些文件、运行了哪些命令、生成了什么产物、哪些能力仍未实现。
+
+禁止事项：
+
+- 不要把 ONNX 文件继续当作旧 `--input` 的文本 float 文件读取。
+- 不要生成 0 字节 `.int8` 文件并报告成功。
+- 不要在 M1 阶段承诺已经完成真实 ONNX 量化。
+- 不要引入大型依赖或完整重写项目结构，除非用户明确同意。
+- 不要删除旧的 `--size`、`--input`、`--output` demo 能力。
+
+
+一、当前已确认事实
+------------------
+
+quant-tool 仓库路径：
+
+  /home/lar/workspace/EdgeAIquant_toolkit
+
+LiteEdgeINT 数据路径：
+
+  /home/lar/workspace/zorp/model_fp32.onnx
+  /home/lar/workspace/zorp/calibration/
+
+当前工具构建方式：
+
+  cd /home/lar/workspace/EdgeAIquant_toolkit
+  bash build.sh
+
+当前构建产物：
+
+  /home/lar/workspace/EdgeAIquant_toolkit/output/bin/edgequant_tool
+
+当前 CLI：
+
+  --size INT [100]
+  --input TEXT
+  --output TEXT
+
+当前源码结论：
+
+- `src/main/args_parser.cpp` 只解析 `--size`、`--input`、`--output`。
+- `src/main/quant_tool_main.cpp` 用 `std::ifstream >> float` 读取 `--input`。
+- 当前 `--input` 真实含义是“文本 float 张量文件”，不是 ONNX 模型。
+- 当前入口没有读取 `config/quant_config.json`。
+- 当前入口没有使用 calibration 数据。
+- 当前入口没有 ONNX parser。
+
+已试跑并失败的命令：
+
+  mkdir -p /home/lar/workspace/zorp/quantized
+
+  /home/lar/workspace/EdgeAIquant_toolkit/output/bin/edgequant_tool \
+    --input /home/lar/workspace/zorp/model_fp32.onnx \
+    --output /home/lar/workspace/zorp/quantized/model_fp32_edgequant.int8
+
+结果：
+
+- 程序正常退出。
+- 日志显示“从文件读取 0 个元素”。
+- 输出文件 `model_fp32_edgequant.int8` 大小为 0。
+- 原因：ONNX 是二进制模型，不是文本 float 列表。
+
+
+二、路线选择
+------------
+
+当前不要直接做完整大改。
+
+推荐路线：
+
+  先最小工程化改造，再逐步增强 ONNX 量化能力。
+
+原因：
+
+- LiteEdgeINT 当前仍在 TinyCNN 跑通全链路阶段。
+- 现在最需要的是明确工具能力、输入输出协议和错误边界。
+- 如果立刻做完整 ONNX parser、全算子量化、per-channel 量化，风险太大，容易拖住主线。
+
+
+三、当下推荐：M1 最小工程接口改造
+---------------------------------
+
+阶段名称：
+
+  M1：最小工程接口改造
+
+核心目标：
+
+1. 保留当前文本 float 张量 demo 能力。
+2. 新增面向 LiteEdgeINT 的工程 CLI。
+3. 当工具暂时不支持 ONNX 解析时，必须明确报告，不允许生成空文件并伪装成功。
+4. 生成中文 `quant_report.json`。
+5. 为后续真正 ONNX + calibration 量化预留输出协议。
+
+本阶段不要求：
+
+- 不要求真正解析 ONNX 图。
+- 不要求真正从 ONNX 提取权重。
+- 不要求真正生成可部署的 INT8 权重。
+- 不要求接入 C++ Runtime。
+- 不要求支持所有算子。
+
+完成定义：
+
+- `edgequant_tool --help` 能看到新增工程参数。
+- `edgequant_tool --size 10` 仍然能运行旧 demo。
+- 传入 `--model /home/lar/workspace/zorp/model_fp32.onnx` 时，不再走文本 float 读取分支。
+- ONNX report 模式能生成 `/home/lar/workspace/zorp/quantized/quant_report.json`。
+- 报告明确写出 `status=unsupported` 和 `onnx_supported=false`。
+- 输入路径错误时返回非 0，并打印中文错误。
+
+
+四、M1 CLI 设计
+---------------
+
+必须保留旧参数：
+
+  --size
+  --input
+  --output
+
+新增参数：
+
+  --model TEXT           ONNX 模型路径
+  --calibration TEXT     校准数据目录
+  --output-dir TEXT      输出目录
+  --bit-width INT        量化位宽，默认 8
+  --platform TEXT        目标平台，默认 cpu
+  --config TEXT          可选配置文件路径
+  --mode TEXT            运行模式，默认 auto
+
+建议模式：
+
+  --mode tensor-demo     使用旧的文本 float 张量输入模式
+  --mode onnx-report     检查 ONNX/calibration 路径并生成报告，不伪装支持真实 ONNX 量化
+  --mode auto            如果传 --model，则走 onnx-report；否则走 tensor-demo
+
+示例：
+
+  ./output/bin/edgequant_tool \
+    --model /home/lar/workspace/zorp/model_fp32.onnx \
+    --calibration /home/lar/workspace/zorp/calibration \
+    --output-dir /home/lar/workspace/zorp/quantized \
+    --bit-width 8 \
+    --platform cpu
+
+
+五、M1 输出协议
+---------------
+
+当使用 `--model` 运行但尚未实现 ONNX 量化时，必须生成：
+
+  <output-dir>/quant_report.json
+
+推荐第一版只生成 `quant_report.json`，避免误导。暂时不要生成空的 `.int8` 文件。
+
+quant_report.json 必须包含：
+
+  {
+    "report_language": "zh-CN",
+    "tool_name": "edgequant_tool",
+    "tool_version": "0.1.0",
+    "status": "unsupported",
+    "status_note": "当前版本尚未实现 ONNX 模型量化，仅完成输入检查和报告生成。",
+    "onnx_supported": false,
+    "calibration_supported": false,
+    "model_path": "...",
+    "model_exists": true,
+    "model_size_bytes": 549569,
+    "calibration_path": "...",
+    "calibration_exists": true,
+    "calibration_manifest_exists": true,
+    "calibration_sample_count": 32,
+    "output_dir": "...",
+    "bit_width": 8,
+    "platform": "cpu",
+    "next_action": "后续需要实现 ONNX 权重解析和 calibration 统计。"
+  }
+
+如果输入路径错误：
+
+- 程序应返回非 0。
+- 终端打印明确中文错误。
+- 如果能创建 output-dir，也可以写失败报告。
+
+
+六、建议修改的文件
+------------------
+
+优先修改：
+
+1. `include/edgequant/args_parser.h`
+
+给 `Args` 增加字段：
+
+  model_file
+  calibration_dir
+  output_dir
+  bit_width
+  platform
+  config_file
+  mode
+
+2. `src/main/args_parser.cpp`
+
+新增 CLI 参数，并更新 `--help` 中文说明。
+
+3. `src/main/quant_tool_main.cpp`
+
+根据参数判断运行模式：
+
+- 保留旧的文本张量 demo 分支。
+- 新增 `--model` 分支：
+  - 检查 ONNX 文件是否存在。
+  - 检查 calibration 目录是否存在。
+  - 检查 `calibration_manifest.json` 是否存在。
+  - 统计 `samples_npy` 下样本数量。
+  - 创建 output-dir。
+  - 生成 `quant_report.json`。
+  - 明确写出当前不支持真实 ONNX 量化。
+
+可选新增：
+
+4. `include/edgequant/report_writer.h`
+5. `src/main/report_writer.cpp`
+
+如果不想新增文件，也可以先在 `quant_tool_main.cpp` 中写一个简单函数生成 JSON。
+
+M1 推荐实现步骤
+---------------
+
+第 1 步：阅读现状
+
+  sed -n '1,220p' include/edgequant/args_parser.h
+  sed -n '1,220p' src/main/args_parser.cpp
+  sed -n '1,280p' src/main/quant_tool_main.cpp
+
+目标：
+- 找到 `Args` 结构体。
+- 找到当前 CLI 参数注册位置。
+- 找到当前文本 float 输入分支和保存输出逻辑。
+
+第 2 步：扩展 Args
+
+在 `include/edgequant/args_parser.h` 中增加字段，建议默认值：
+
+  std::string model_file;
+  std::string calibration_dir;
+  std::string output_dir;
+  std::string config_file;
+  std::string platform = "cpu";
+  std::string mode = "auto";
+  int bit_width = 8;
+
+第 3 步：扩展 CLI
+
+在 `src/main/args_parser.cpp` 中新增：
+
+  --model
+  --calibration
+  --output-dir
+  --bit-width
+  --platform
+  --config
+  --mode
+
+要求：
+- help 使用中文说明。
+- 不破坏旧参数。
+- `--mode` 可以先不做复杂校验，但至少支持 `auto`、`tensor-demo`、`onnx-report`。
+
+第 4 步：拆分运行分支
+
+在 `src/main/quant_tool_main.cpp` 中按以下规则分支：
+
+- 如果 `mode == "onnx-report"` 或者 `mode == "auto" && model_file 非空`，进入 ONNX report 分支。
+- 否则进入原来的 tensor demo 分支。
+
+第 5 步：实现 ONNX report 分支
+
+ONNX report 分支只做工程检查，不做真实量化：
+
+- 检查模型文件是否存在。
+- 检查模型文件大小。
+- 检查 calibration 目录是否存在。
+- 检查 `calibration_manifest.json` 是否存在。
+- 统计 `calibration/samples_npy/*.npy` 数量。
+- 创建 output-dir。
+- 写入 `quant_report.json`。
+- 终端打印中文说明：“当前版本尚未实现 ONNX 量化，仅生成检查报告。”
+
+第 6 步：错误处理
+
+- 模型文件不存在：返回非 0。
+- calibration 目录不存在：返回非 0。
+- output-dir 创建失败：返回非 0。
+- bit_width 不是 8 时：M1 可以返回非 0，或报告 unsupported，但必须明确说明。
+
+第 7 步：构建验收
+
+执行本文“七、M1 验收标准”中的全部命令。
+
+第 8 步：提交总结
+
+总结必须包含：
+
+- 修改文件列表。
+- 构建是否成功。
+- 旧 demo 是否仍可用。
+- ONNX report 模式生成的报告路径。
+- 报告中的关键字段。
+- 仍未实现：真实 ONNX parser、真实 INT8 权重生成、calibration 统计。
+
+
+七、M1 验收标准
+---------------
+
+构建：
+
+  cd /home/lar/workspace/EdgeAIquant_toolkit
+  bash build.sh
+
+帮助信息：
+
+  ./output/bin/edgequant_tool --help
+
+验收：
+
+- help 中能看到：
+  - --model
+  - --calibration
+  - --output-dir
+  - --bit-width
+  - --platform
+  - --config
+  - --mode
+
+旧 demo 模式仍可用：
+
+  ./output/bin/edgequant_tool --size 10
+
+验收：
+
+- 能生成随机张量。
+- 能输出旧的 result.txt 或指定 output 文件。
+
+ONNX report 模式：
+
+  mkdir -p /home/lar/workspace/zorp/quantized
+
+  ./output/bin/edgequant_tool \
+    --model /home/lar/workspace/zorp/model_fp32.onnx \
+    --calibration /home/lar/workspace/zorp/calibration \
+    --output-dir /home/lar/workspace/zorp/quantized \
+    --bit-width 8 \
+    --platform cpu
+
+验收：
+
+- 程序退出码为 0。
+- 生成：
+  - `/home/lar/workspace/zorp/quantized/quant_report.json`
+- 报告中必须写：
+  - `onnx_supported=false`
+  - `calibration_manifest_exists=true`
+  - `calibration_sample_count=32`
+  - `status=unsupported`
+  - 中文说明当前尚未实现真实 ONNX 量化
+
+错误路径测试：
+
+  ./output/bin/edgequant_tool \
+    --model /bad/model.onnx \
+    --calibration /home/lar/workspace/zorp/calibration \
+    --output-dir /home/lar/workspace/zorp/quantized
+
+验收：
+
+- 程序退出码非 0。
+- 中文错误说明模型不存在。
+
+
+八、给另一个 Codex 的执行提示词
+-------------------------------
+
+把下面这段复制给另一个在 `EdgeAIquant_toolkit` 仓库中的 Codex：
+
+------------------------------------------------------------
+
+你现在位于 `/home/lar/workspace/EdgeAIquant_toolkit` 仓库。请读取仓库根目录的 `QUANT_TOOL_IMPROVEMENT_PLAN.txt`，按照其中的 “M1：最小工程接口改造” 执行。
+
+目标：
+
+1. 保留当前 `--size` / `--input` / `--output` 文本 float 张量 demo 模式。
+2. 新增 CLI：`--model`、`--calibration`、`--output-dir`、`--bit-width`、`--platform`、`--config`、`--mode`。
+3. 当传入 `--model` 时，不要再把 ONNX 当文本 float 读取。
+4. 当前阶段不要求实现真正 ONNX 量化；请生成中文 `quant_report.json`，明确 `onnx_supported=false`，避免空文件伪成功。
+5. 检查 `/home/lar/workspace/zorp/model_fp32.onnx` 和 `/home/lar/workspace/zorp/calibration/calibration_manifest.json` 是否存在。
+6. 统计 calibration 样本数量。
+7. 构建并测试：
+   - `bash build.sh`
+   - `./output/bin/edgequant_tool --help`
+   - `./output/bin/edgequant_tool --size 10`
+   - `./output/bin/edgequant_tool --model /home/lar/workspace/zorp/model_fp32.onnx --calibration /home/lar/workspace/zorp/calibration --output-dir /home/lar/workspace/zorp/quantized --bit-width 8 --platform cpu`
+8. 所有新增报告和终端说明尽量使用中文。
+
+请修改必要文件，运行构建和测试，最后总结修改文件、命令输出、生成产物路径和仍未实现的能力。
+
+------------------------------------------------------------
+
+
+九、未来大改计划
+----------------
+
+当 LiteEdgeINT 全链路跑通后，再考虑完整改造。
+
+未来目标：
+
+1. 接入 ONNX parser
+   - 可选路线：ONNX Runtime C++ API、ONNX protobuf、或第三方轻量解析。
+   - 目标：读取 ONNX initializer 权重。
+
+2. 支持 calibration 统计
+   - 读取 `calibration_manifest.json`。
+   - 读取样本。
+   - 统计 activation min/max 或 KL calibration。
+
+3. 支持真实 INT8 产物
+   - `int8_weight.bin`
+   - `quant_params.json`
+   - `quant_report.json`
+
+4. 支持量化粒度
+   - per-tensor
+   - per-channel
+
+5. 支持算子范围
+   - Conv
+   - Gemm / MatMul
+   - Linear
+
+6. 支持 C++ Runtime 对接
+   - 固定权重文件格式。
+   - 固定 quant_params schema。
+   - 增加 runtime 读取测试。
+
+7. 支持性能分析闭环
+   - 输出模型规模。
+   - 输出权重压缩率。
+   - 输出后续 gem5 关联指标。
+
+
+十、当前最终建议
+----------------
+
+现在不要继续把 ONNX 直接传给旧 `--input`。
+
+正确下一步是：
+
+  在 EdgeAIquant_toolkit 仓库执行 M1 最小工程接口改造。
+
+改造完成后，再回到 LiteEdgeINT：
+
+1. 记录成功命令。
+2. 把成功命令固化到 `quant_tool_bridge/run_quant_tool.py`。
+3. 再进入 C++ Runtime 对接阶段。
