@@ -63,10 +63,6 @@ target_link_libraries(edgequant_quantizer
     PRIVATE pthread dl
 )
 
-# ===================== CLI11 引入 =====================
-include(FetchContent)
-
-add_subdirectory(third_party/CLI11)
 # ================= 主程序 =================
 add_executable(edgequant_tool
     src/main/quant_tool_main.cpp
@@ -75,7 +71,6 @@ add_executable(edgequant_tool
 
 target_link_libraries(edgequant_tool
     PRIVATE edgequant_quantizer
-    PRIVATE CLI11::CLI11 
 )
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9.0)
     target_link_libraries(edgequant_tool PRIVATE stdc++fs)

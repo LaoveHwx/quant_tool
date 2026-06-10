@@ -1,0 +1,11 @@
+{
+  "fixture": "m1_smoke",
+  "description": "Minimal calibration manifest for M1 interface smoke tests.",
+  "sample_dir": "samples_npy",
+  "sample_count": 3,
+  "samples": [
+    "samples_npy/sample_000.npy",
+    "samples_npy/sample_001.npy",
+    "samples_npy/sample_002.npy"
+  ]
+}
