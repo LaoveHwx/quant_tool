@@ -67,6 +67,7 @@ target_link_libraries(edgequant_quantizer
 add_executable(edgequant_tool
     src/main/quant_tool_main.cpp
     src/main/args_parser.cpp
+    src/main/onnx_weight_exporter.cpp
 )
 
 target_link_libraries(edgequant_tool

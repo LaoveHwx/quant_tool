@@ -14,7 +14,7 @@ struct Args {
     std::string output_dir = "";        // 工程模式输出目录（可选）
     std::string config_file = "";       // 配置文件路径（可选）
     std::string platform = "cpu";       // 目标平台
-    std::string mode = "auto";          // auto / tensor-demo / onnx-report
+    std::string mode = "auto";          // auto / tensor-demo / onnx-report / onnx-weight-export
     int bit_width = 8;                  // 量化位宽
     bool show_help = false;
 };

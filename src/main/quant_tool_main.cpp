@@ -13,6 +13,7 @@
 #include "edgequant/version.h"
 #include "edgequant/quantizer.h"
 #include "edgequant/args_parser.h"
+#include "edgequant/onnx_weight_exporter.h"
 
 namespace fs = std::filesystem;
 
@@ -315,6 +316,31 @@ int run_tensor_demo(const edgequant::Args& args, char* argv[]) {
     return 0;
 }
 
+int run_onnx_weight_export(const edgequant::Args& args) {
+    edgequant::OnnxWeightExportOptions options;
+    options.model_file = args.model_file;
+    options.calibration_dir = args.calibration_dir;
+    options.output_dir = args.output_dir;
+    options.platform = args.platform;
+    options.bit_width = args.bit_width;
+
+    const edgequant::OnnxWeightExportResult result =
+        edgequant::export_onnx_weights_to_m2_artifacts(options);
+    if (!result.success) {
+        std::cerr << "M2-A 权重量化失败: " << result.message << "\n";
+        return 1;
+    }
+
+    std::cout << result.message << "\n";
+    std::cout << "导出权重张量数量: " << result.exported_tensor_count << "\n";
+    std::cout << "跳过 initializer 数量: " << result.skipped_initializer_count << "\n";
+    std::cout << "INT8 权重字节数: " << result.weight_bytes << "\n";
+    std::cout << "INT8 权重文件: " << result.int8_weight_path << "\n";
+    std::cout << "量化参数文件: " << result.quant_params_path << "\n";
+    std::cout << "检查报告文件: " << result.report_path << "\n";
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -326,6 +352,10 @@ int main(int argc, char* argv[]) {
     std::cout << "编译时间: " << COMPILE_TIME << "\n\n";
 
     std::cout << "完成初始化.\n";
+
+    if (args.mode == "onnx-weight-export") {
+        return run_onnx_weight_export(args);
+    }
 
     if (args.mode == "onnx-report" || (args.mode == "auto" && !args.model_file.empty())) {
         return run_onnx_report(args);

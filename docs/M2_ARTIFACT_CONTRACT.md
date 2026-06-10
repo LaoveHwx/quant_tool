@@ -86,6 +86,14 @@ M2 第一阶段建议只支持有限模型范围：
 - INT8 per-tensor 权重量化。
 - 生成 `int8_weight.bin` 和 `quant_params.json`。
 
+M2-A 显式入口：
+
+```bash
+edgequant_tool --mode onnx-weight-export ...
+```
+
+默认 `auto` 模式仍保持 M1 行为：传入 `--model` 时只生成 unsupported report，避免既有 bridge 被突然切换到 Runtime 可消费路径。
+
 M2 第一阶段可以暂不支持：
 
 - 全图 activation calibration。

@@ -89,6 +89,43 @@ int8_weight.bin
 
 其中 `quant_report.json` 必须声明 `status == "success"` 且 `onnx_supported == true`。M1 的 `status=unsupported` 报告不得被 Runtime 当作可加载权重。
 
+## M2-A 权重导出
+
+M2-A 新增显式模式：
+
+```bash
+./output/bin/edgequant_tool \
+  --mode onnx-weight-export \
+  --model /home/lar/workspace/zorp/model_fp32.onnx \
+  --calibration /home/lar/workspace/zorp/calibration \
+  --output-dir /home/lar/workspace/zorp/quantized_m2a \
+  --bit-width 8 \
+  --platform cpu
+```
+
+该模式会尝试从 ONNX initializer 中读取 float32 权重，并导出：
+
+```text
+int8_weight.bin
+quant_params.json
+quant_report.json
+```
+
+M2-A 当前边界：
+
+- 支持 Conv / Gemm / MatMul / Linear 的权重 initializer。
+- 支持 float32 `raw_data` 或 `float_data`。
+- 使用 per-tensor symmetric int8 权重量化。
+- 暂不做 activation calibration。
+- 暂不做 per-channel 量化。
+- 暂不做 Runtime 加载执行。
+
+验证 M2-A 输出：
+
+```bash
+python3 scripts/validate_m2_artifact_contract.py /home/lar/workspace/zorp/quantized_m2a
+```
+
 ## 运行示例
 
 旧 tensor demo：
@@ -109,6 +146,7 @@ ONNX report 模式：
 ```
 
 当前 report 模式只做输入检查和报告生成，不解析 ONNX，不生成真实 INT8 权重。
+如需尝试 M2-A 真实权重导出，请使用 `--mode onnx-weight-export`。
 
 ## 项目结构
 

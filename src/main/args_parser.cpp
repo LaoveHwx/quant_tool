@@ -24,7 +24,7 @@ void print_help(std::ostream& os) {
     os << "  --bit-width INT      量化位宽，默认 8\n";
     os << "  --platform TEXT      目标平台，默认 cpu\n";
     os << "  --config TEXT        可选配置文件路径\n";
-    os << "  --mode TEXT          运行模式：auto / tensor-demo / onnx-report，默认 auto\n";
+    os << "  --mode TEXT          运行模式：auto / tensor-demo / onnx-report / onnx-weight-export，默认 auto\n";
     os << "  -h, --help           显示帮助信息\n";
 }
 
@@ -72,7 +72,10 @@ void split_option(const std::string& raw, std::string& name, std::string& value)
 }
 
 bool is_valid_mode(const std::string& mode) {
-    return mode == "auto" || mode == "tensor-demo" || mode == "onnx-report";
+    return mode == "auto"
+        || mode == "tensor-demo"
+        || mode == "onnx-report"
+        || mode == "onnx-weight-export";
 }
 
 } // namespace
