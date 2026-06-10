@@ -1,4 +1,4 @@
-name: M1 Smoke
+name: Baseline Checks
 
 on:
   push:
@@ -23,3 +23,6 @@ jobs:
 
       - name: Run M1 smoke test
         run: bash scripts/smoke_m1.sh
+
+      - name: Validate M2 artifact contract
+        run: python3 scripts/validate_m2_artifact_contract.py tests/fixtures/m2/valid_artifact

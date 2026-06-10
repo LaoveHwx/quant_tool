@@ -1,0 +1,24 @@
+{
+  "report_language": "zh-CN",
+  "tool_name": "edgequant_tool",
+  "tool_version": "0.2.0-contract",
+  "status": "success",
+  "status_note": "M2 artifact contract fixture only; not real quantization output.",
+  "onnx_supported": true,
+  "calibration_supported": true,
+  "model_path": "tests/fixtures/m1/model_stub.onnx",
+  "model_exists": true,
+  "model_size_bytes": 104,
+  "calibration_path": "tests/fixtures/m1/calibration",
+  "calibration_exists": true,
+  "calibration_manifest_exists": true,
+  "calibration_sample_count": 3,
+  "output_dir": "tests/fixtures/m2/valid_artifact",
+  "bit_width": 8,
+  "platform": "cpu",
+  "artifacts": {
+    "int8_weight": "int8_weight.bin",
+    "quant_params": "quant_params.json"
+  },
+  "next_action": "Runtime may validate the artifact contract before loading weights."
+}

@@ -59,6 +59,36 @@ output/m1_smoke/tensor_result.txt
 output/m1_smoke/quant_report.json
 ```
 
+## M2 产物契约验证
+
+M2 的目标是生成 Runtime 可以消费的真实 INT8 产物。进入真实 ONNX 量化实现前，先固定产物契约：
+
+```text
+docs/M2_ARTIFACT_CONTRACT.md
+```
+
+验证 M2 合法产物目录：
+
+```bash
+python3 scripts/validate_m2_artifact_contract.py tests/fixtures/m2/valid_artifact
+```
+
+成功时会看到：
+
+```text
+[M2][PASS] artifact contract validated
+```
+
+M2 成功产物必须包含：
+
+```text
+quant_report.json
+quant_params.json
+int8_weight.bin
+```
+
+其中 `quant_report.json` 必须声明 `status == "success"` 且 `onnx_supported == true`。M1 的 `status=unsupported` 报告不得被 Runtime 当作可加载权重。
+
 ## 运行示例
 
 旧 tensor demo：
@@ -88,7 +118,9 @@ include/edgequant/       公共头文件
 config/                  默认配置
 third_party/ascend_mock/  Ascend mock 头文件和占位库
 tests/fixtures/m1/       M1 smoke 测试夹具
+tests/fixtures/m2/       M2 artifact contract 测试夹具
 scripts/smoke_m1.sh      M1 一键验收脚本
+scripts/validate_m2_artifact_contract.py  M2 产物契约验证脚本
 ```
 
 ## M1 基线

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "tool_name": "edgequant_tool",
+  "tool_version": "0.2.0-contract",
+  "bit_width": 8,
+  "byte_order": "little_endian",
+  "weight_file": "int8_weight.bin",
+  "model": {
+    "source_format": "onnx",
+    "source_path": "tests/fixtures/m1/model_stub.onnx"
+  },
+  "tensors": [
+    {
+      "name": "conv1.weight",
+      "source_node": "conv1",
+      "role": "weight",
+      "data_type": "int8",
+      "shape": [4, 1, 2, 2],
+      "scale": 0.03125,
+      "zero_point": 0,
+      "quantization": "per_tensor",
+      "quantization_axis": null,
+      "offset_bytes": 0,
+      "size_bytes": 16
+    }
+  ]
+}
