@@ -56,12 +56,12 @@ std::string json_escape(const std::string& value) {
     return escaped.str();
 }
 
-bool is_regular_file(const fs::path& path) {
+bool path_is_regular_file(const fs::path& path) {
     std::error_code ec;
     return fs::exists(path, ec) && fs::is_regular_file(path, ec);
 }
 
-bool is_directory(const fs::path& path) {
+bool path_is_directory(const fs::path& path) {
     std::error_code ec;
     return fs::exists(path, ec) && fs::is_directory(path, ec);
 }
@@ -74,7 +74,7 @@ std::uintmax_t safe_file_size(const fs::path& path) {
 
 std::size_t count_calibration_samples(const fs::path& calibration_dir) {
     const fs::path samples_dir = calibration_dir / "samples_npy";
-    if (!is_directory(samples_dir)) {
+    if (!path_is_directory(samples_dir)) {
         return 0;
     }
 
@@ -169,11 +169,11 @@ int run_onnx_report(const edgequant::Args& args) {
     report.output_dir = output_dir;
     report.bit_width = args.bit_width;
     report.platform = args.platform;
-    report.model_exists = !args.model_file.empty() && is_regular_file(report.model_path);
+    report.model_exists = !args.model_file.empty() && path_is_regular_file(report.model_path);
     report.model_size_bytes = report.model_exists ? safe_file_size(report.model_path) : 0;
-    report.calibration_exists = !args.calibration_dir.empty() && is_directory(report.calibration_path);
+    report.calibration_exists = !args.calibration_dir.empty() && path_is_directory(report.calibration_path);
     report.calibration_manifest_exists =
-        report.calibration_exists && is_regular_file(report.calibration_path / "calibration_manifest.json");
+        report.calibration_exists && path_is_regular_file(report.calibration_path / "calibration_manifest.json");
     report.calibration_sample_count =
         report.calibration_exists ? count_calibration_samples(report.calibration_path) : 0;
 
