@@ -1,36 +1,107 @@
+# EdgeAIquant_toolkit
 
-# EdgeAIquant_toolkit 
-## 边缘端 AI 模型量化工具链 (全链路工程化脚手架)
+边缘端 AI 模型量化工具链工程化脚手架。
 
-本仓库是一个针对边缘计算场景设计的 C++ 量化工具，旨在展示从底层算法开发、CMake 自动化构建到 Docker 容器化交付的完整工业级流程。
+当前优先目标不是完整 ONNX 量化器，而是先固定清晰、可验证、不会误报成功的工程接口，为后续 LiteEdgeINT C++ Runtime 和 gem5 链路做准备。
 
-## 🌟 核心特性
-- 工程化构建：使用 CMake 配合 Presets 机制，支持 Debug/Release 多模式构建。
-- 环境隔离：提供基于 Docker 的开发环境，支持 GDB 远程调试及权限对齐，解决 UID 冲突。
-- 极致瘦身：采用 Docker 多阶段构建 (Multi-stage Build)，镜像体积从 800MB+ 缩减至约 120MB。
-- 硬件适配：预留硬件加速接口。
+## 核心特性
 
-## 🛠️ 快速上手
-### 1. 环境准备 (Docker)
+- 工程化构建：使用 CMake Presets，支持 Debug / Release 构建。
+- 旧 demo 兼容：保留 `--size` / `--input` / `--output` 文本 float 张量模式。
+- M1 工程接口：新增 `--model` / `--calibration` / `--output-dir` / `--bit-width` / `--platform` / `--config` / `--mode`。
+- ONNX report 模式：当前不伪装支持真实 ONNX 量化，只生成中文 `quant_report.json`。
+- 硬件适配预留：保留 Ascend mock 适配层。
+
+## Ubuntu 22.04 环境准备
+
 ```bash
-# 进入开发容器 (推荐)
-./docker_run.sh  # 脚本已封装 -u $(id -u) 权限处理
-2. 项目构建
-bash
-运行
-./build.sh debug    # 构建调试版本
-./build.sh release  # 构建生产版本
-3. 运行量化工具
-bash
-运行
+sudo apt update
+sudo apt install -y build-essential cmake ninja-build
+```
+
+## 构建
+
+```bash
+bash build.sh
+```
+
+构建产物：
+
+```text
+output/bin/edgequant_tool
+```
+
+## M1 一键验收
+
+```bash
+bash scripts/smoke_m1.sh
+```
+
+该脚本会自动完成：
+
+- 构建项目。
+- 检查 `--help` 中是否包含 M1 新增 CLI。
+- 验证旧 `tensor-demo` 模式仍可输出结果。
+- 使用 repo 内置 fixture 运行 `onnx-report`。
+- 检查 `quant_report.json` 的关键字段。
+- 验证错误模型路径返回非 0。
+
+成功时会看到：
+
+```text
+[M1][PASS] smoke test completed
+```
+
+M1 smoke 产物默认写入：
+
+```text
+output/m1_smoke/tensor_result.txt
+output/m1_smoke/quant_report.json
+```
+
+## 运行示例
+
+旧 tensor demo：
+
+```bash
 ./output/bin/edgequant_tool --size 20
-📦 部署与交付
-本项目支持离线镜像交付。通过以下命令导入已打包的镜像：
-bash
-运行
-docker load -i edgequant_delivery_v1.tar
-docker run --rm -v $(pwd):/output/data edgequant:prod --size 15
-📂 项目架构
-src/: 量化核心算法与硬件适配层。
-third_party/: 包含 CLI11 等第三方高效解析库及硬件 Mock。
-Dockerfile: 生产级多阶段镜像配置。
+```
+
+ONNX report 模式：
+
+```bash
+./output/bin/edgequant_tool \
+  --model tests/fixtures/m1/model_stub.onnx \
+  --calibration tests/fixtures/m1/calibration \
+  --output-dir output/m1_smoke \
+  --bit-width 8 \
+  --platform cpu
+```
+
+当前 report 模式只做输入检查和报告生成，不解析 ONNX，不生成真实 INT8 权重。
+
+## 项目结构
+
+```text
+src/                    量化核心算法与 CLI 入口
+include/edgequant/       公共头文件
+config/                  默认配置
+third_party/ascend_mock/  Ascend mock 头文件和占位库
+tests/fixtures/m1/       M1 smoke 测试夹具
+scripts/smoke_m1.sh      M1 一键验收脚本
+```
+
+## M1 基线
+
+已通过 Ubuntu 22.04 smoke 验收的 M1 基线 tag：
+
+```text
+v0.1.0-m1
+```
+
+M1 仍未实现：
+
+- 真实 ONNX parser。
+- 真实 INT8 权重生成。
+- activation calibration 统计。
+- C++ Runtime 对接。

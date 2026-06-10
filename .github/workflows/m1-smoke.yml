@@ -1,0 +1,25 @@
+name: M1 Smoke
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  smoke:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential cmake ninja-build
+
+      - name: Run M1 smoke test
+        run: bash scripts/smoke_m1.sh
